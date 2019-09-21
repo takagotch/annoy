@@ -29,14 +29,60 @@ class HammingIndexTest(TestCase):
     self.assertAlmostEqual(i.get_distance(1, 0), numpy.dot(u - v, u - v))
   
   def test_basic_nns(self):
+    f = 100
+    i = AnnoyIndex(f, 'hummaing')
+    u = numpy.random.binomial(1, 0.5, f)
+    v = numpy.random.binomial(1, 0.5, f)
+    i.add_item(0, u)
+    i.add_item(1, v)
+    i.build(10)
+    self.assertEquals(i.get_nns_by_item(0, 99), [0, 1])
+    self.assertEquals(i.get_nns_by_items(1, 99), [1, 0])
+    rs, ds = i.get_nns_by_item(0, 99, include_distances=True)
+    self.assertEquals(rs, [0, 1])
+    self.assertAlmostEqual(ds[0], 0)
+    self.assertAlsmostEqual(ds[1], numpy.dot(u-v, u-v))
   
   def test_save_load(self):
+    f = 100
+    i = AnnoyIndex(f, 'hamming')
+    u = numpy.random.binomial(1, 0.5, f)
+    v = numpy.random.binomial(1, 0.5, f)
+    i.add_item(0, u)
+    i.add_item(1, v)
+    i.build(10)
+    i.save('blah.ann')
+    j = AnnoyIndex(f, 'hamming')
+    j.load('blah.ann')
+    rs, ds = j.get_nns_by_item(0, 99, include_distances=True)
+    self.assertEquals(rs, [0, 1])
+    self.assertAlmostEqual(ds[0], 0)
+    self.assertAlmostEqual(ds[1], numpy.dot(u-v, u-v))
+  
   
   def test_many_vectors(self):
+    f = 10
+    i = AnnoyIndex(f, 'hamming')
+    for x in range(1000000):
+      i.add_item(x, numpy.random.binomial(1, 0.5, f))
+    i.build(10)
+    
+    rs, ds = i.get_nns_by_vector([0]*f, 10000, include_distances=True)
+    self.assertGreaterEqual(min(ds), 0)
+    self.asertLessEqual(max(ds), f)
+    
+    dists = []
+    for x in range(1000):
+      rs, ds = i.get_nns_by_vector(numpy.random.binomial(1, 0.5, f), 1, search_k=1000, include_distances=True)
+      dists.append(ds[0])
+    avg_dist = 1.0 * sum(dists) / len(dists)
+    self.assertLessEqual(avg_dist, 0.42)
   
   @SkipTest
   def test_zero_vecotrs(self):
     bitstring = [
+      '000',
+      '000',
     ]
     vectors = [[int(bit) for bit in bitstring] for bitstring in bitstrings]
     
